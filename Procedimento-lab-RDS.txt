@@ -1,0 +1,102 @@
+
+LABORATÓRIO RDS
+
+CRIANDO O DATABASE
+
+1 - Conecet na console do AWS;
+2 - Em Services, selecione RDS;
+3 - Na próxima tela, clique em Create Database
+4 - Na tela Engine Options, selecione a opção MySQL;
+5 - Na seção Template, selecione Free Tier;
+6 - Em Settings, faça as seguintes modificações:
+
+DB Instance Identifier: Nome da instância de DB. Insira um nome para a instância;
+Master Username: user para acessar a instância. Mantenha default (Admin);
+Master Password: senha da conta Master
+Confirm password: confirmação da senha
+
+7 - Deixe as demais opções default e vá até a seção Connectivity e em VPC solecione a VPC Default. Essa VPC deverá ser usada pela
+instância EC2 que será aprovisionada mais á frente;
+8 - Cilque em Additional connectivity configuration e selecione as opções abaixo:
+
+Subnet Group: selecione default-vpc
+Publicly accessible: clique em No;
+VPC Security Group: selecione a opção Create New e insira um nome para o security group;
+Availability Zone: deixe No Preference;
+Database port: deixe a opção default, 3306
+
+9 - Vá na seção Additional configuration e em Database Options, insira o nome do banco (ex. db-wordpress);
+10 - EM backup, desmarque a opção que habilita backup automático;
+11 - Deixe as demais opções default e clique em Create Database;
+12 - O processo de criação do database deve levar entre 5 e 10 minutos. Enquanto o banco está sendo criado, vá para a próxima etapa do lab.
+
+CRIANDO INSTÂNCIA EC2
+
+1 - Na console AWS, vá em Serviços -> EC2;
+2 - No menu lateral esquerdo, clique em Instâncias e clique em Launch Instance;
+3 - Selecione a instância Amazon Linux 2 AMI e clique em Select;
+4 - Caso não esteja marcado, selecione a opção t2.micro (free). Clique em COnfigure Instance Details;
+5 - Em COnfigure Instance Details, garanta que a VPC selecionada é a default, assim como a subnet;
+6 - Vá em Advanced Details e no campo User Data copie o script abaixo dentro desse campo e clique em Add Storage:
+
+#!/bin/bash
+yum update -y
+yum install httpd php php-mysql -y
+cd /var/www/html
+wget https://wordpress.org/wordpress-5.1.1.tar.gz
+tar -xzf wordpress-5.1.1.tar.gz
+cp -r wordpress/* /var/www/html/
+rm -rf wordpress
+rm -rf wordpress-5.1.1.tar.gz
+chmod -R 755 wp-content
+chown -R apache:apache wp-content
+service httpd start
+chkconfig httpd on
+
+7 - Não altere nada, clique em Add Tags;
+8 - Não há necessidade de inserir tags, clique em Configure Security Groups;
+9 - Em Security groups, clique me Create a new security group e insira os dados abaixo:
+
+Security group name: informe um nome para o security group;
+
+10 - clique em Add rule e insira regras HTTP (80) e HTTPS (443). Cliquem em Review e launch;
+11 - Clique em Launch. Será solicitado informar ou criar uma nova chave para acesso á VM. Selecione a opção create a new key pair, informe um nome
+para a chave, clique em download e clique em Launch Instance;
+12 - Clique em view instances, para visualizar a instância recém criada;
+13 - Uma vez criada a instância, devemos agora "autorizar" a conexão da instância EC2 criada ao database, para isso clique em Security Groups
+no menu lateral esquerda da console;
+14 - Selecione o security group associada á database criada no RDS e clique em Regras de Entrada. Clique em Edit inbound Rules;
+15 - Clique em Add rule e em Tipo, selecione MySQL/Aurora. No campo Source, digite o nome do security group associado á instância EC2. Clique em Save.
+
+CONFIGURANDO APLICAÇÃO WORDPRESS
+
+1 - Volte á seção das instâncias EC2 e selecione a instância recém crida;
+2 - Na parte inferior da tela, em Description, localize o IP público associado á instância, copie e cole-o em outra aba do navegador. Deve abrir a página
+para iniciar a configiração do Wordpress;
+3 - Na página, cLique em Let's Go;
+4 - Será aberta a página do Wordpress para configurar o banco que será utilizado pela aplicação. Preencha os campos com as informações que você definiu
+na seção de criação do banco de dados, e após clique em submitt:
+
+Database Name: nome do banco
+Username: nome do usuário configurado no database
+Password: Senha do username
+Database Host: endereço do banco de dados recém criado. Volte ao serviço RDS e selecione o banco criado. Em COnncetivity & Security, identifique o
+campo Endpoint, copie seu conteúdo e cole no campo Database Host da aplicação
+
+5 - Estando tudo correto, na próxima tela será exibido uma página da aplicação informando que não conseguiu criar o arquivo wp-config.php. Nessa etapa
+será necessário criarmos o arquivo manualmente. Conecte na instãncia EC2 via SSH, usando o mesmo IP da aplicação. Será necessário informar a private key
+criada junto com a instância EC2;
+6 - Voltando á pagina do Worpdress, copie o conteudo do arquivo wp-config.php exibido na tela;
+7 - Na instância EC2, já conectado, eleve os privilégios do usuário e vá até o diretório /var/www/html:
+
+sudo su
+cd /var/www/html
+
+8 - Dentro do diretório, usando o editor de texto de sua preferência, crie o arquivo wp-config.php e copie o conteúdo copiado no passo 6 dessa seção no arquivo.
+Salve e saia da edição do arquivo;
+9 - Após copiar o conteúdo do arquivo e salva, retorne ao navegador e na página do wordpress, clique em Run Installation;
+10 - A próxima página a ser aberta é para você informar o nome do site e os dados de acesso. Preencha os campos e clique em Install Wordpress;
+11 - Será exibida tela informando que a ação ocorreu com sucesso. CLique em Log In. Na próxima tela, insira as credenciais do worpdress.
+
+
+
